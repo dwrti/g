@@ -1,4 +1,4 @@
-name: Ultimate Direct Uploader
+name: Video Direct Uploader (No Limits)
 
 on:
   workflow_dispatch:
@@ -14,23 +14,23 @@ jobs:
   upload:
     runs-on: ubuntu-latest
     steps:
-      - name: Transfer
+      - name: Transfer Video
         run: |
           # 1. تجهيز الاسم
           FINAL_NAME=$(echo "${{ github.event.inputs.file_name }}" | sed 's/\.mp4//g' | tr ' ' '_').mp4
 
-          # 2. التحميل
+          # 2. التحميل (بأمر صريح ومختصر)
           echo "⬇️ جاري تحميل المقطع..."
-          curl -kL "${{ github.event.inputs.video_url }}" -o "$FINAL_NAME"
+          curl -L "${{ github.event.inputs.video_url }}" -o "$FINAL_NAME"
 
-          # 3. الرفع والحصول على الرابط المباشر فوراً
-          echo "📤 جاري الرفع والحصول على الرابط..."
-          # موقع Lit.sh يعيد الرابط المباشر في ثانية واحدة
-          DIRECT_URL=$(curl -k --upload-file "./$FINAL_NAME" https://lit.sh)
+          # 3. الرفع إلى Bash.Upload (يدعم حتى 2GB ورابطه مباشر)
+          echo "📤 جاري الرفع..."
+          # هذا الموقع يعطيك الرابط في سطر واحد بدون تعقيد
+          DIRECT_URL=$(curl https://bashupload.com/ -T "$FINAL_NAME")
 
-          # 4. النتيجة النهائية
+          # 4. النتيجة
           echo "--------------------------------------------------"
           echo "✅ تم الرفع بنجاح!"
-          echo "🔗 الرابط المباشر للمشاهدة والتحميل:"
+          echo "🔗 الرابط المباشر:"
           echo "$DIRECT_URL"
           echo "--------------------------------------------------"
