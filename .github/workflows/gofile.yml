@@ -1,4 +1,4 @@
-name: Ultimate Video Uploader (Pixeldrain)
+name: Ultimate Direct Uploader
 
 on:
   workflow_dispatch:
@@ -16,22 +16,21 @@ jobs:
     steps:
       - name: Transfer
         run: |
-          # 1. تنظيف الاسم
-          SAFE_NAME=$(echo "${{ github.event.inputs.file_name }}" | sed 's/\.mp4//g' | tr ' ' '_').mp4
+          # 1. تجهيز الاسم
+          FINAL_NAME=$(echo "${{ github.event.inputs.file_name }}" | sed 's/\.mp4//g' | tr ' ' '_').mp4
 
           # 2. التحميل
           echo "⬇️ جاري تحميل المقطع..."
-          curl -kL "${{ github.event.inputs.video_url }}" -o "$SAFE_NAME"
+          curl -kL "${{ github.event.inputs.video_url }}" -o "$FINAL_NAME"
 
-          # 3. الرفع إلى Pixeldrain
-          echo "📤 جاري الرفع إلى Pixeldrain..."
-          # الرفع يعيد كود الـ File ID في JSON
-          RESPONSE=$(curl -k -T "$SAFE_NAME" https://pixeldrain.com/api/file/)
-          FILE_ID=$(echo $RESPONSE | jq -r '.id')
+          # 3. الرفع والحصول على الرابط المباشر فوراً
+          echo "📤 جاري الرفع والحصول على الرابط..."
+          # موقع Lit.sh يعيد الرابط المباشر في ثانية واحدة
+          DIRECT_URL=$(curl -k --upload-file "./$FINAL_NAME" https://lit.sh)
 
           # 4. النتيجة النهائية
           echo "--------------------------------------------------"
           echo "✅ تم الرفع بنجاح!"
-          echo "🔗 رابط المشاهدة: https://pixeldrain.com/u/$FILE_ID"
-          echo "🎬 الرابط المباشر (للتحميل أو المشغل): https://pixeldrain.com/api/file/$FILE_ID?download"
+          echo "🔗 الرابط المباشر للمشاهدة والتحميل:"
+          echo "$DIRECT_URL"
           echo "--------------------------------------------------"
