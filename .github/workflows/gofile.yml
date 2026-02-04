@@ -1,4 +1,4 @@
-name: Video Uploader (Gofile & Catbox)
+name: Video Uploader to Catbox
 
 on:
   workflow_dispatch:
@@ -7,47 +7,32 @@ on:
         description: 'ضع رابط المقطع هنا'
         required: true
       file_name:
-        description: 'اكتب اسم الملف'
+        description: 'اكتب اسم الملف (سيتم تنظيفه تلقائياً)'
         required: true
 
 jobs:
-  upload_job:
+  catbox_upload:
     runs-on: ubuntu-latest
     steps:
-      - name: Download and Upload
+      - name: Download and Upload to Catbox
         run: |
-          # 1. تجهيز الاسم
-          RAW_NAME=$(echo "${{ github.event.inputs.file_name }}" | sed 's/\.mp4//g')
-          FINAL_FILE="${RAW_NAME}.mp4"
+          # 1. تجهيز اسم الملف وتنظيفه من المسافات
+          # tr ' ' '_' يبدل المسافات بشرطة سفلية عشان ما يغلط الكود
+          SAFE_NAME=$(echo "${{ github.event.inputs.file_name }}" | sed 's/\.mp4//g' | tr ' ' '_')
+          FINAL_FILE="${SAFE_NAME}.mp4"
 
-          # 2. التحميل
-          echo "🚀 جاري تحميل المقطع..."
+          echo "🚀 جاري تحميل المقطع باسم: $FINAL_FILE"
+
+          # 2. تحميل المقطع من الرابط الأصلي
           curl -L "${{ github.event.inputs.video_url }}" -o "$FINAL_FILE"
 
-          # 3. محاولة الرفع على Gofile أولاً
-          echo "📤 محاولة الرفع على Gofile..."
-          SERVER=$(curl -s https://api.gofile.io/getServer | jq -r '.data.server' || echo "store1")
-          curl -F "file=@$FINAL_FILE" "https://${SERVER}.gofile.io/uploadFile" > gofile_res.json
-          
-          if grep -q "status\":\"ok\"" gofile_res.json; then
-            echo "--------------------------------------------------"
-            echo "✅ تم الرفع على Gofile بنجاح!"
-            echo "🔗 الرابط: $(jq -r '.data.downloadPage' gofile_res.json)"
-            echo "--------------------------------------------------"
-          else
-            echo "⚠️ فشل Gofile (سيرفر ممتلئ)، جاري الرفع على Catbox كبديل..."
-            
-            # 4. الرفع على Catbox (الخطة ب)
-            CATBOX_URL=$(curl -F "reqtype=fileupload" -F "fileToUpload=@$FINAL_FILE" https://catbox.moe/user/api.php)
-            
-            if [[ $CATBOX_URL == http* ]]; then
-              echo "--------------------------------------------------"
-              echo "✅ تم الرفع على Catbox بنجاح!"
-              echo "🔗 الرابط المباشر: $CATBOX_URL"
-              echo "ℹ️ ملاحظة: هذا رابط مباشر للمشاهدة والتحميل"
-              echo "--------------------------------------------------"
-            else
-              echo "❌ للأسف جميع المواقع تعذرت حالياً."
-              exit 1
-            fi
-          fi
+          # 3. الرفع إلى Catbox
+          echo "📤 جاري الرفع إلى Catbox..."
+          # Catbox يعيد الرابط مباشرة كـ text وليس JSON
+          URL=$(curl -F "reqtype=fileupload" -F "fileToUpload=@$FINAL_FILE" https://catbox.moe/user/api.php)
+
+          # 4. النتيجة النهائية
+          echo "--------------------------------------------------"
+          echo "✅ تم الرفع بنجاح يا بطل!"
+          echo "🔗 رابط المشاهدة المباشر: $URL"
+          echo "--------------------------------------------------"
