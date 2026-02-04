@@ -1,4 +1,4 @@
-name: Video Uploader to Catbox
+name: Direct Link Uploader (Up to 500MB)
 
 on:
   workflow_dispatch:
@@ -7,32 +7,30 @@ on:
         description: 'ضع رابط المقطع هنا'
         required: true
       file_name:
-        description: 'اكتب اسم الملف (سيتم تنظيفه تلقائياً)'
+        description: 'اكتب اسم الملف'
         required: true
 
 jobs:
-  catbox_upload:
+  upload_job:
     runs-on: ubuntu-latest
     steps:
-      - name: Download and Upload to Catbox
+      - name: Process Video
         run: |
-          # 1. تجهيز اسم الملف وتنظيفه من المسافات
-          # tr ' ' '_' يبدل المسافات بشرطة سفلية عشان ما يغلط الكود
+          # 1. تجهيز الاسم
           SAFE_NAME=$(echo "${{ github.event.inputs.file_name }}" | sed 's/\.mp4//g' | tr ' ' '_')
           FINAL_FILE="${SAFE_NAME}.mp4"
 
-          echo "🚀 جاري تحميل المقطع باسم: $FINAL_FILE"
-
-          # 2. تحميل المقطع من الرابط الأصلي
+          # 2. تحميل المقطع
+          echo "🚀 جاري تحميل المقطع..."
           curl -L "${{ github.event.inputs.video_url }}" -o "$FINAL_FILE"
 
-          # 3. الرفع إلى Catbox
-          echo "📤 جاري الرفع إلى Catbox..."
-          # Catbox يعيد الرابط مباشرة كـ text وليس JSON
-          URL=$(curl -F "reqtype=fileupload" -F "fileToUpload=@$FINAL_FILE" https://catbox.moe/user/api.php)
-
-          # 4. النتيجة النهائية
+          # 3. الرفع إلى Quax.org (يعطي رابط مباشر مثل Catbox)
+          echo "📤 جاري الرفع لتعطيك رابط مباشر..."
+          RESPONSE=$(curl -F "file=@$FINAL_FILE" https://quax.org/api/upload)
+          
+          # 4. عرض الرابط النهائي
           echo "--------------------------------------------------"
-          echo "✅ تم الرفع بنجاح يا بطل!"
-          echo "🔗 رابط المشاهدة المباشر: $URL"
+          echo "✅ تم الرفع بنجاح!"
+          echo "🔗 الرابط المباشر الخاص بك:"
+          echo "$RESPONSE"
           echo "--------------------------------------------------"
