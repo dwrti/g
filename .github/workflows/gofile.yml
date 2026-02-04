@@ -16,37 +16,41 @@ jobs:
     steps:
       - name: Download and Upload
         run: |
-          # 1. تجهيز الاسم (إزالة mp4 لو كتبتها وإضافتها بشكل صحيح)
+          # 1. تجهيز الاسم
           RAW_NAME=$(echo "${{ github.event.inputs.file_name }}" | sed 's/\.mp4//g')
           FINAL_FILE="${RAW_NAME}.mp4"
 
-          echo "🚀 جاري تحميل: $FINAL_FILE"
-
-          # 2. التحميل من الرابط
+          # 2. التحميل
+          echo "🚀 جاري تحميل المقطع..."
           curl -L "${{ github.event.inputs.video_url }}" -o "$FINAL_FILE"
 
-          # تأكد أن الملف نزل فعلياً وحجمه أكبر من صفر
-          if [ ! -s "$FINAL_FILE" ]; then
-            echo "❌ فشل التحميل: الرابط قد يكون انتهى أو غير صالح"
-            exit 1
-          fi
+          # 3. محاولة الرفع (3 محاولات على سيرفرات مختلفة)
+          success=false
+          for i in {1..3}; do
+            echo "📤 محاولة الرفع رقم $i..."
+            
+            # جلب سيرفر جديد في كل محاولة
+            SERVER=$(curl -s https://api.gofile.io/getServer | jq -r '.data.server')
+            echo "📡 السيرفر المختار: $SERVER"
 
-          # 3. جلب السيرفر مع محاولة إعادة المحاولة
-          SERVER=$(curl -s https://api.gofile.io/getServer | jq -r '.data.server' || echo "store1")
-          
-          echo "📤 جاري الرفع إلى سيرفر: $SERVER"
+            # الرفع
+            curl -F "file=@$FINAL_FILE" "https://${SERVER}.gofile.io/uploadFile" > response.json
+            
+            if grep -q "status\":\"ok\"" response.json; then
+              echo "--------------------------------------------------"
+              echo "✅ تم الرفع بنجاح في المحاولة رقم $i"
+              echo "🔗 الرابط: $(jq -r '.data.downloadPage' response.json)"
+              echo "--------------------------------------------------"
+              success=true
+              break
+            else
+              echo "⚠️ السيرفر $SERVER ممتلئ أو حدث خطأ، سأحاول سيرفر آخر..."
+              sleep 2
+            fi
+          done
 
-          # 4. الرفع مع حفظ النتيجة في ملف للتأكد
-          curl -F "file=@$FINAL_FILE" "https://${SERVER}.gofile.io/uploadFile" > response.json
-          
-          # 5. التحقق من النتيجة وعرض الرابط
-          if grep -q "status\":\"ok\"" response.json; then
-            echo "--------------------------------------------------"
-            echo "✅ تم الرفع بنجاح يا بطل!"
-            echo "🔗 الرابط: $(jq -r '.data.downloadPage' response.json)"
-            echo "--------------------------------------------------"
-          else
-            echo "❌ فشل الرفع إلى Gofile. الرد كان:"
+          if [ "$success" = false ]; then
+            echo "❌ للأسف جميع المحاولات فشلت بسبب ضغط سيرفرات Gofile."
             cat response.json
             exit 1
           fi
