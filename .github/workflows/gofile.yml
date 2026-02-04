@@ -7,7 +7,7 @@ on:
         description: 'ضع رابط المقطع هنا'
         required: true
       file_name:
-        description: 'اكتب اسم الملف (بدون .mp4)'
+        description: 'اكتب اسم الملف'
         required: true
 
 jobs:
@@ -16,15 +16,37 @@ jobs:
     steps:
       - name: Download and Upload
         run: |
-          # التحميل بالاسم الذي اخترته
-          curl -L "${{ github.event.inputs.video_url }}" -o "${{ github.event.inputs.file_name }}.mp4"
+          # 1. تجهيز الاسم (إزالة mp4 لو كتبتها وإضافتها بشكل صحيح)
+          RAW_NAME=$(echo "${{ github.event.inputs.file_name }}" | sed 's/\.mp4//g')
+          FINAL_FILE="${RAW_NAME}.mp4"
+
+          echo "🚀 جاري تحميل: $FINAL_FILE"
+
+          # 2. التحميل من الرابط
+          curl -L "${{ github.event.inputs.video_url }}" -o "$FINAL_FILE"
+
+          # تأكد أن الملف نزل فعلياً وحجمه أكبر من صفر
+          if [ ! -s "$FINAL_FILE" ]; then
+            echo "❌ فشل التحميل: الرابط قد يكون انتهى أو غير صالح"
+            exit 1
+          fi
+
+          # 3. جلب السيرفر مع محاولة إعادة المحاولة
+          SERVER=$(curl -s https://api.gofile.io/getServer | jq -r '.data.server' || echo "store1")
           
-          # جلب السيرفر والرفع
-          SERVER=$(curl -s https://api.gofile.io/getServer | jq -r '.data.server')
-          RESULT=$(curl -F "file=@${{ github.event.inputs.file_name }}.mp4" "https://${SERVER}.gofile.io/uploadFile")
+          echo "📤 جاري الرفع إلى سيرفر: $SERVER"
+
+          # 4. الرفع مع حفظ النتيجة في ملف للتأكد
+          curl -F "file=@$FINAL_FILE" "https://${SERVER}.gofile.io/uploadFile" > response.json
           
-          # إظهار الرابط النهائي
-          echo "--------------------------------------------------"
-          echo "✅ الملف جاهز الآن!"
-          echo "🔗 الرابط: $(echo $RESULT | jq -r '.data.downloadPage')"
-          echo "--------------------------------------------------"
+          # 5. التحقق من النتيجة وعرض الرابط
+          if grep -q "status\":\"ok\"" response.json; then
+            echo "--------------------------------------------------"
+            echo "✅ تم الرفع بنجاح يا بطل!"
+            echo "🔗 الرابط: $(jq -r '.data.downloadPage' response.json)"
+            echo "--------------------------------------------------"
+          else
+            echo "❌ فشل الرفع إلى Gofile. الرد كان:"
+            cat response.json
+            exit 1
+          fi
