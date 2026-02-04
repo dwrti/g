@@ -1,35 +1,37 @@
-name: Large Video Direct Uploader
+name: Ultimate Video Uploader (Pixeldrain)
 
 on:
   workflow_dispatch:
     inputs:
       video_url:
-        description: 'رابط الفيديو (من سبيستون أو غيره)'
+        description: 'رابط الفيديو'
         required: true
       file_name:
-        description: 'اسم الملف الجديد'
+        description: 'اسم الملف'
         required: true
 
 jobs:
-  upload_large:
+  upload:
     runs-on: ubuntu-latest
     steps:
-      - name: Transferring Video
+      - name: Transfer
         run: |
           # 1. تنظيف الاسم
           SAFE_NAME=$(echo "${{ github.event.inputs.file_name }}" | sed 's/\.mp4//g' | tr ' ' '_').mp4
 
-          # 2. التحميل (استخدام -k لتجاوز مشاكل الأمان اللي طلعت لك)
+          # 2. التحميل
           echo "⬇️ جاري تحميل المقطع..."
           curl -kL "${{ github.event.inputs.video_url }}" -o "$SAFE_NAME"
 
-          # 3. الرفع لموقع Quax (يسمح حتى 500MB)
-          echo "📤 جاري الرفع والحصول على رابط مباشر..."
-          # استخدمنا -k هنا أيضاً لضمان عدم حدوث SSL error
-          DIRECT_URL=$(curl -k -F "file=@$SAFE_NAME" https://quax.org/api/upload)
+          # 3. الرفع إلى Pixeldrain
+          echo "📤 جاري الرفع إلى Pixeldrain..."
+          # الرفع يعيد كود الـ File ID في JSON
+          RESPONSE=$(curl -k -T "$SAFE_NAME" https://pixeldrain.com/api/file/)
+          FILE_ID=$(echo $RESPONSE | jq -r '.id')
 
           # 4. النتيجة النهائية
           echo "--------------------------------------------------"
-          echo "✅ تم الرفع بنجاح (أكبر من 200MB)!"
-          echo "🔗 الرابط المباشر: $DIRECT_URL"
+          echo "✅ تم الرفع بنجاح!"
+          echo "🔗 رابط المشاهدة: https://pixeldrain.com/u/$FILE_ID"
+          echo "🎬 الرابط المباشر (للتحميل أو المشغل): https://pixeldrain.com/api/file/$FILE_ID?download"
           echo "--------------------------------------------------"
