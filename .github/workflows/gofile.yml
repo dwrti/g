@@ -1,0 +1,30 @@
+name: Gofile Custom Uploader
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: 'ضع رابط المقطع هنا'
+        required: true
+      file_name:
+        description: 'اكتب اسم الملف (بدون .mp4)'
+        required: true
+
+jobs:
+  upload_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download and Upload
+        run: |
+          # التحميل بالاسم الذي اخترته
+          curl -L "${{ github.event.inputs.video_url }}" -o "${{ github.event.inputs.file_name }}.mp4"
+          
+          # جلب السيرفر والرفع
+          SERVER=$(curl -s https://api.gofile.io/getServer | jq -r '.data.server')
+          RESULT=$(curl -F "file=@${{ github.event.inputs.file_name }}.mp4" "https://${SERVER}.gofile.io/uploadFile")
+          
+          # إظهار الرابط النهائي
+          echo "--------------------------------------------------"
+          echo "✅ الملف جاهز الآن!"
+          echo "🔗 الرابط: $(echo $RESULT | jq -r '.data.downloadPage')"
+          echo "--------------------------------------------------"
