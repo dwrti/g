@@ -1,36 +1,35 @@
-name: Direct Link Uploader (Up to 500MB)
+name: Large Video Direct Uploader
 
 on:
   workflow_dispatch:
     inputs:
       video_url:
-        description: 'ضع رابط المقطع هنا'
+        description: 'رابط الفيديو (من سبيستون أو غيره)'
         required: true
       file_name:
-        description: 'اكتب اسم الملف'
+        description: 'اسم الملف الجديد'
         required: true
 
 jobs:
-  upload_job:
+  upload_large:
     runs-on: ubuntu-latest
     steps:
-      - name: Process Video
+      - name: Transferring Video
         run: |
-          # 1. تجهيز الاسم
-          SAFE_NAME=$(echo "${{ github.event.inputs.file_name }}" | sed 's/\.mp4//g' | tr ' ' '_')
-          FINAL_FILE="${SAFE_NAME}.mp4"
+          # 1. تنظيف الاسم
+          SAFE_NAME=$(echo "${{ github.event.inputs.file_name }}" | sed 's/\.mp4//g' | tr ' ' '_').mp4
 
-          # 2. تحميل المقطع
-          echo "🚀 جاري تحميل المقطع..."
-          curl -L "${{ github.event.inputs.video_url }}" -o "$FINAL_FILE"
+          # 2. التحميل (استخدام -k لتجاوز مشاكل الأمان اللي طلعت لك)
+          echo "⬇️ جاري تحميل المقطع..."
+          curl -kL "${{ github.event.inputs.video_url }}" -o "$SAFE_NAME"
 
-          # 3. الرفع إلى Quax.org (يعطي رابط مباشر مثل Catbox)
-          echo "📤 جاري الرفع لتعطيك رابط مباشر..."
-          RESPONSE=$(curl -F "file=@$FINAL_FILE" https://quax.org/api/upload)
-          
-          # 4. عرض الرابط النهائي
+          # 3. الرفع لموقع Quax (يسمح حتى 500MB)
+          echo "📤 جاري الرفع والحصول على رابط مباشر..."
+          # استخدمنا -k هنا أيضاً لضمان عدم حدوث SSL error
+          DIRECT_URL=$(curl -k -F "file=@$SAFE_NAME" https://quax.org/api/upload)
+
+          # 4. النتيجة النهائية
           echo "--------------------------------------------------"
-          echo "✅ تم الرفع بنجاح!"
-          echo "🔗 الرابط المباشر الخاص بك:"
-          echo "$RESPONSE"
+          echo "✅ تم الرفع بنجاح (أكبر من 200MB)!"
+          echo "🔗 الرابط المباشر: $DIRECT_URL"
           echo "--------------------------------------------------"
